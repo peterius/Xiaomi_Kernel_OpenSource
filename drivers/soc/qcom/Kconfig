@@ -340,9 +340,9 @@ menuconfig MSM_SCM_XPU
 
 if MSM_SCM_XPU
 
-choice
-	prompt "XPU Violation Behavior"
-	default MSM_XPU_ERR_FATAL
+#choice
+#	prompt "XPU Violation Behavior"
+#	default MSM_XPU_ERR_FATAL
 
 config MSM_XPU_ERR_FATAL
 	bool "Configure XPU violations as fatal errors"
@@ -354,7 +354,7 @@ config MSM_XPU_ERR_NONFATAL
 	help
 	 Select if XPU violations have to be configured as non-fatal errors.
 
-endchoice
+#endchoice
 
 endif
 
