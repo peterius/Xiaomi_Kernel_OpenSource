@@ -1745,14 +1745,24 @@ asmlinkage int vprintk_emit(int facility, int level,
 	unsigned long flags;
 	int printed_len = 0;
 	bool in_sched = false;
+	struct console * con;
 
 	if (level == SCHED_MESSAGE_LOGLEVEL) {
 		level = LOGLEVEL_DEFAULT;
 		in_sched = true;
 	}
 
-	boot_delay_msec(level);
-	printk_delay();
+	if(console_drivers)			//why delay if no one can read it
+	{
+		for_each_console(con) {
+			if((con->flags & CON_HASSCREEN))
+			{
+				boot_delay_msec(level);
+				printk_delay();
+				break;
+			}
+		}
+	}
 
 	/* This stops the holder of console_sem just where we want him */
 	logbuf_lock_irqsave(flags);
