@@ -2710,8 +2710,8 @@ static int goodix_ts_probe(struct i2c_client *client,
 	gtp_register_powermanger(ts);
 
 
-if (gtp_read_FW(client))
-	printk("read FW fail\n");
+	if (gtp_read_FW(client))
+		printk("read FW fail\n");
 
 	strcpy(tp_info_summary, "[Vendor]Dongshan, [IC]GT915, [FW]Ver");
 	strcat(tp_info_summary, tp_fw_version);

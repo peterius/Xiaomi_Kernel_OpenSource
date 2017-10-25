@@ -1118,27 +1118,27 @@ unsigned char FT8606_TestItem_NoiseTest(bool *bTestResult)
 	if (ReCode != ERROR_CODE_OK)
 		goto TEST_ERR;
 
-		iMinValue = 0;
-		iMaxValue = g_stCfg_FT8606_BasicThreshold.NoiseTest_Coefficient * chNoiseValue * 32 / 100;
-		printk("\n");
-		for (iRow = 0; iRow < (g_stSCapConfEx.ChannelXNum + 1); iRow++) {
-			for (iCol = 0; iCol < g_stSCapConfEx.ChannelYNum; iCol++) {
-				if ((0 == g_stCfg_MCap_DetailThreshold.InvalidNode[iRow][iCol])) {
-					continue;
-				}
-				if (iRow >= g_stSCapConfEx.ChannelXNum && iCol >= g_stSCapConfEx.KeyNum) {
-					continue;
-				}
-
-
-				if (m_NoiseData[iRow][iCol] < iMinValue || m_NoiseData[iRow][iCol] > iMaxValue) {
-					btmpresult = false;
-					printk("noise test failure. Node=(%d,  %d), Get_value=%d,  Set_Range=(%d, %d)  \n", \
-						iRow+1, iCol+1, m_NoiseData[iRow][iCol], iMinValue, iMaxValue);
-				}
+	iMinValue = 0;
+	iMaxValue = g_stCfg_FT8606_BasicThreshold.NoiseTest_Coefficient * chNoiseValue * 32 / 100;
+	printk("\n");
+	for (iRow = 0; iRow < (g_stSCapConfEx.ChannelXNum + 1); iRow++) {
+		for (iCol = 0; iCol < g_stSCapConfEx.ChannelYNum; iCol++) {
+			if ((0 == g_stCfg_MCap_DetailThreshold.InvalidNode[iRow][iCol])) {
+				continue;
 			}
-			printk("\n");
+			if (iRow >= g_stSCapConfEx.ChannelXNum && iCol >= g_stSCapConfEx.KeyNum) {
+				continue;
+			}
+
+
+			if (m_NoiseData[iRow][iCol] < iMinValue || m_NoiseData[iRow][iCol] > iMaxValue) {
+				btmpresult = false;
+				printk("noise test failure. Node=(%d,  %d), Get_value=%d,  Set_Range=(%d, %d)  \n", \
+					iRow+1, iCol+1, m_NoiseData[iRow][iCol], iMinValue, iMaxValue);
+			}
 		}
+		printk("\n");
+	}
 
 
 
