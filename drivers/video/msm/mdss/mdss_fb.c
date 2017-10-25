@@ -56,6 +56,9 @@
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
 #include "mdss_dsi.h"
+#ifdef CONFIG_FB_MSM_CONSOLE
+#include "missing_fb.c"
+#endif //CONFIG_FB_MSM_CONSOLE
 
 extern struct mdss_dsi_ctrl_pdata *change_par_ctrl ;
 extern int change_par_buf;
@@ -1166,7 +1169,14 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	struct mdss_panel_data *pdata;
 	struct fb_info *fbi;
 	int rc;
-
+#ifdef CONFIG_FB_MSM_CONSOLE
+	static int just_one_fb_thankyou = 0;
+	
+	if(just_one_fb_thankyou)
+		return -ENODEV;
+	just_one_fb_thankyou = 1;
+#endif //CONFIG_FB_MSM_CONSOLE
+	
 	if (fbi_list_index >= MAX_FBI_LIST)
 		return -ENOMEM;
 
@@ -1267,12 +1277,12 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			return rc;
 		}
 	}
-
+	
 	rc = pm_runtime_set_active(mfd->fbi->dev);
 	if (rc < 0)
 		pr_err("pm_runtime: fail to set active.\n");
 	pm_runtime_enable(mfd->fbi->dev);
-
+	
 	/* android supports only one lcd-backlight/lcd for now */
 	if (!lcd_backlight_registered) {
 		backlight_led.brightness = mfd->panel_info->brightness_max;
@@ -1305,9 +1315,36 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mdss_fb_set_mdp_sync_pt_threshold(mfd, mfd->panel.type);
 
+
+#ifdef CONFIG_FB_MSM_CONSOLE
+	
+	/* If this is done before the register_framebuffer, bootloader logo
+	 * stays up. And if fb_open returns 0, we can no longer draw from splash...*/
+	 
+	/*if(mfd->mdp.dma_fnc)
+	{
+		mfd->mdp.dma_fnc(mfd);
+		mfd->mdp.dma_fnc(mfd);
+	}*/
+	/*if(mfd->mdp.dma_fnc)
+		mfd->mdp.dma_fnc(mfd);	*/
+
+	mdss_mdp_overlay_start(mfd);				//overlay start must be before splash_cleanup and blank, for anything to draw
+
+	mdss_mdp_splash_cleanup(mfd, false);
+ 	
+ 	// sometimes works without the splash_cleanup and the overlay_start though there are complaints about pre_ handoff calls... 
+ 	lock_fb_info(mfd->fbi);
+	rc = fb_blank(mfd->fbi, FB_BLANK_UNBLANK);
+	if (rc) {
+		pr_err("can't turn on fb!\n");
+	}
+	unlock_fb_info(mfd->fbi);
+
+#endif //CONFIG_FB_MSM_CONSOLE
 	if (mfd->mdp.splash_init_fnc)
 		mfd->mdp.splash_init_fnc(mfd);
-
+	
 	/*
 	 * Register with input driver for a callback for command mode panels.
 	 * When there is an input event, mdp clocks will be turned on to reduce
@@ -1851,7 +1888,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 	if (mfd->mdp.on_fnc) {
 		struct mdss_panel_info *panel_info = mfd->panel_info;
 		struct fb_var_screeninfo *var = &mfd->fbi->var;
-
+		
 		ret = mfd->mdp.on_fnc(mfd);
 		if (ret) {
 			mdss_fb_stop_disp_thread(mfd);
@@ -2359,6 +2396,11 @@ static struct fb_ops mdss_fb_ops = {
 	.fb_compat_ioctl_v2 = mdss_fb_compat_ioctl,
 #endif
 	.fb_mmap = mdss_fb_mmap,
+#ifdef CONFIG_FB_MSM_CONSOLE
+	.fb_fillrect = msmfb_fillrect,
+	.fb_copyarea = msmfb_copyarea,
+	.fb_imageblit = msmfb_imageblit,
+#endif //CONFIG_FB_MSM_CONSOLE
 };
 
 static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
@@ -2478,7 +2520,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
 	mfd->op_enable = false;
-
+	
 	switch (mfd->fb_imgType) {
 	case MDP_RGB_565:
 		fix->type = FB_TYPE_PACKED_PIXELS;
@@ -2600,6 +2642,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	 * Populate smem length here for uspace to get the
 	 * Framebuffer size when FBIO_FSCREENINFO ioctl is called.
 	 */
+	// why is this done here ?!?! CONFIG_FB_MSM_CONSOLE
 	fix->smem_len = PAGE_ALIGN(fix->line_length * var->yres) * mfd->fb_page;
 
 	/* id field for fb app  */
@@ -2609,6 +2652,10 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 
 	fbi->fbops = &mdss_fb_ops;
 	fbi->flags = FBINFO_FLAG_DEFAULT;
+#ifdef CONFIG_FB_MSM_CONSOLE
+	//necessary?
+	//fbi->flags |= FBINFO_HWACCEL_COPYAREA | FBINFO_HWACCEL_FILLRECT | FBINFO_HWACCEL_IMAGEBLIT;
+#endif //CONFIG_FB_MSM_CONSOLE
 	fbi->pseudo_palette = mdss_fb_pseudo_palette;
 
 	mfd->ref_cnt = 0;
@@ -2646,6 +2693,14 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
 		pr_err("fb_alloc_cmap() failed!\n");
+#ifdef CONFIG_FB_MSM_CONSOLE
+	if(!fbi->screen_base)
+	{
+		if(mdss_fb_alloc_fb_ion_memory(mfd, fbi->var.xres * fbi->var.yres *
+			(fbi->var.bits_per_pixel >> 3) * 2) < 0)
+			pr_err("FrameBuffer[%d] early framebuffer memory allocation failed\n", mfd->index);
+	}
+#endif //CONFIG_FB_MSM_CONSOLE
 
 	if (register_framebuffer(fbi) < 0) {
 		fb_dealloc_cmap(&fbi->cmap);
@@ -2653,7 +2708,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 		mfd->op_enable = false;
 		return -EPERM;
 	}
-
+	
 	snprintf(panel_name, ARRAY_SIZE(panel_name), "mdss_panel_fb%d",
 		mfd->index);
 	mdss_panel_debugfs_init(panel_info, panel_name);
@@ -2685,14 +2740,25 @@ static int mdss_fb_open(struct fb_info *info, int user)
 
 	file_info->file = info->file;
 	list_add(&file_info->list, &mfd->file_list);
+#ifdef CONFIG_FB_MSM_CONSOLE
+#define MDSS_IGNORE_POWER_DISABLE_DEPTH
+#endif //CONFIG_FB_MSM_CONSOLE
 
+#ifndef MDSS_IGNORE_POWER_DISABLE_DEPTH	
+	pm_runtime_enable(info->dev);
 	result = pm_runtime_get_sync(info->dev);
-
+	
+	//if(info->dev->power.disable_depth == 1)
+	//if(info->dev->power.is_suspended)
+		//our_special_flag = 1;
 	if (result < 0) {
 		pr_err("pm_runtime: fail to wake up\n");
 		goto pm_error;
+		//pm_runtime_put_sync(info->dev);
 	}
-
+#else
+	result = 0;
+#endif //!MDSS_IGNORE_POWER_DISABLE_DEPTH
 	if (!mfd->ref_cnt) {
 		result = mdss_fb_blank_sub(FB_BLANK_UNBLANK, info,
 					   mfd->op_enable);
@@ -2710,7 +2776,9 @@ static int mdss_fb_open(struct fb_info *info, int user)
 
 blank_error:
 	pm_runtime_put(info->dev);
+#ifndef MDSS_IGNORE_POWER_DISABLE_DEPTH
 pm_error:
+#endif //!MDSS_IGNORE_POWER_DISABLE_DEPTH
 	list_del(&file_info->list);
 	kfree(file_info);
 	return result;
@@ -3070,7 +3138,11 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
-
+#ifdef CONFIG_FB_MSM_CONSOLE
+	/* wait_event_timeout causes some schedule bug error, like
+	 * we're not supposed to sleep here... */
+	return 0;
+#endif //CONFIG_FB_MSM_CONSOLE
 	ret = wait_event_timeout(mfd->idle_wait_q,
 			(!atomic_read(&mfd->commits_pending) ||
 			 mfd->shutdown_pending),
@@ -3095,7 +3167,11 @@ static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd)
 static int mdss_fb_wait_for_kickoff(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
-
+#ifdef CONFIG_FB_MSM_CONSOLE
+	/* wait_event_timeout causes some schedule bug error, like
+	 * we're not supposed to sleep here... */
+	return 0;
+#endif //CONFIG_FB_MSM_CONSOLE
 	if (!mfd->wait_for_kickoff)
 		return mdss_fb_pan_idle(mfd);
 
@@ -3394,7 +3470,7 @@ static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 {
 	struct mdp_display_commit disp_commit;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-
+	
 	/*
 	 * during mode switch through mode sysfs node, it will trigger a
 	 * pan_display after switch. This assumes that fb has been adjusted,
@@ -3825,7 +3901,10 @@ static int mdss_fb_set_par(struct fb_info *info)
 	struct fb_var_screeninfo *var = &info->var;
 	int old_imgType;
 	int ret = 0;
-
+#ifdef CONFIG_FB_MSM_CONSOLE	
+	//pretend this doesn't work
+	return -1;
+#endif //CONFIG_FB_MSM_CONSOLE	
 	ret = mdss_fb_pan_idle(mfd);
 	if (ret) {
 		pr_err("mdss_fb_pan_idle failed. rc=%d\n", ret);
@@ -3874,7 +3953,7 @@ static int mdss_fb_set_par(struct fb_info *info)
 	default:
 		return -EINVAL;
 	}
-
+	
 	if (info->mode) {
 		const struct fb_videomode *mode;
 
@@ -3907,7 +3986,19 @@ static int mdss_fb_set_par(struct fb_info *info)
 				mfd->fbi->var.yres) * mfd->fb_page;
 
 	if (mfd->panel_reconfig || (mfd->fb_imgType != old_imgType)) {
-		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
+		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);	
+		
+#ifdef CONFIG_FB_MSM_CONSOLE
+	/* What about reallocating dma when set_par changes something? FIXME */
+	//if(!info->screen_base)
+	if(0)
+	{
+		mdss_fb_free_fb_ion_memory(mfd);
+		if(mdss_fb_alloc_fb_ion_memory(mfd, info->var.xres * info->var.yres *
+			(info->var.bits_per_pixel >> 3) * 2) < 0)
+			pr_err("FrameBuffer[%d] early framebuffer memory allocation failed\n", mfd->index);
+	}
+#endif //CONFIG_FB_MSM_CONSOLE
 		mdss_fb_var_to_panelinfo(var, mfd->panel_info);
 		mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
 		mfd->panel_reconfig = false;
