@@ -18,12 +18,14 @@ I don't know, there's a bunch of msm stuff all over the web, but who knows what 
 
 I used the linaro compiler chain, there's a little build script I put in the directory there, no silly repo nonsense, or other trees, etc.. It's just a kernel.
 
-I've set it up to do something like **cat Image.gz *.dtb > Imagedtb* since the kernel make scripts weren't really compiling the open firmware device blobs.
+I've set it up to do something like cat Image.gz *.dtb > Imagedtb* since the kernel make scripts weren't really compiling the open firmware device blobs.
 
 The device blobs themselves I stripped from the provided-with-phone boot.img kernel with https://github.com/dianlujitao/split-appended-dtb
 
 Making the recovery image which I used to boot without overwriting the boot/system images on the phone, (although somehow it messed up my primary boot anyway, probably thinks that something has been altered) was done with scripts from my incomplete https://github.com/peterius/LFM and the android mkbootimg python script... I think it likes the word "ANDROID" at the start or something
 
 ## Last notes:
+
+boot_delay=500 to read messages
 
 I hope this is useful to someone and will add more when I get it working better.
