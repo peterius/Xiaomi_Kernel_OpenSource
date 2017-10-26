@@ -8,9 +8,11 @@ This is a silly attempt to get a framebuffer console on **XiaoMi's Redmi Note 4 
 
 The hack is in *mido_fbcon* branch here.
 
-Note that the kernel doesn't actually completely boot, and even the official (not compiled, provided with phone) kernel has numerous boot errors if you check dmesg.  Still working on that.  Remember to get the right branch.
+Note that the kernel doesn't actually completely boot, and even the official (not compiled, provided with phone) kernel has numerous boot errors if you check dmesg.
 
-I still have a ways to with this but hopefully it's helpful to someone, especially since I think some HuaWei phones also use MSM stuff.
+I still have a ways to go with this but hopefully it's helpful to someone, especially since I think some HuaWei phones also use MSM stuff.
+
+I don't know, there's a bunch of msm stuff all over the web, but who knows what works with what.
 
 ## Compiling:
 
