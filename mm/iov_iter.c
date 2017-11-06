@@ -956,3 +956,22 @@ int iov_iter_npages(const struct iov_iter *i, int maxpages)
 		return iov_iter_npages_iovec(i, maxpages);
 }
 EXPORT_SYMBOL(iov_iter_npages);
+
+/* Taken from recent 4.13.2 kernel: */
+const void * dup_iter(struct iov_iter * new, struct iov_iter * old, gfp_t flags)
+{
+	*new = *old;
+	/*if(unlikely(new->type & ITER_PIPE)) {
+		WARN_ON(1)
+		return NULL;
+	}*/
+	if(new->type & ITER_BVEC)
+		return new->bvec = kmemdup(new->bvec,
+						new->nr_segs * sizeof(struct bio_vec),
+						flags);
+	else
+		return new->iov = kmemdup(new->iov,
+						new->nr_segs * sizeof(struct iovec),
+						flags);
+}
+EXPORT_SYMBOL(dup_iter);
