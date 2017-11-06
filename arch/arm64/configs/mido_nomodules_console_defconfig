@@ -450,6 +450,7 @@ CONFIG_SETEND_EMULATION=y
 #
 #CONFIG_CMDLINE=""
 CONFIG_CMDLINE="console=flibbertygibbit0 fbcon=font:SUN8x16 mdss_mdp.panel=1:dsi:0:qcom,mdss_dsi_nt35532_fhd_video:1:none:cfg:single_dsi"
+#CONFIG_CMDLINE="console=flibbertygibbit0 boot_delay=500 fbcon=font:SUN8x16 mdss_mdp.panel=1:dsi:0:qcom,mdss_dsi_nt35532_fhd_video:1:none:cfg:single_dsi androidboot.emmc=true androidboot.verifiedbootstate=orange androidboot.veritymode=disabled anroidboot.keymaster=1 androidboot.serialno=dd3696fd0304 androidboot.boot_reason= androidboot.selinux=permissive sched_enable_hmp=1 sched_enable_power_aware=1 androidboot.secureboot=1 androidboot.baseband=msm"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_EFI_STUB=y
 CONFIG_EFI=y
@@ -3349,15 +3350,18 @@ CONFIG_USB_F_MASS_STORAGE=y
 CONFIG_USB_F_FS=y
 CONFIG_USB_F_UAC1=y
 CONFIG_USB_F_AUDIO_SRC=y
-# CONFIG_USB_CONFIGFS is not set
-CONFIG_USB_G_ANDROID=y
+CONFIG_USB_CONFIGFS=y
+#CONFIG_USB_FUNCTIONFS=y
+#CONFIG_USB_FUNCTIONFS_GENERIC=y
+CONFIG_USB_CONFIGFS_F_FS=y
+#CONFIG_USB_CONFIGFS_F_PTP=y
+# CONFIG_USB_G_ANDROID is not set
 # CONFIG_USB_ANDROID_RNDIS_DWORD_ALIGNED is not set
 # CONFIG_USB_ZERO is not set
 # CONFIG_USB_AUDIO is not set
 # CONFIG_USB_ETH is not set
 # CONFIG_USB_G_NCM is not set
 # CONFIG_USB_GADGETFS is not set
-# CONFIG_USB_FUNCTIONFS is not set
 # CONFIG_USB_MASS_STORAGE is not set
 # CONFIG_USB_G_SERIAL is not set
 # CONFIG_USB_MIDI_GADGET is not set
